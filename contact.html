@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowerdle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Changed background to light pink */
+            background-color: #fdf2f8; /* Tailwind pink-50 */
+            touch-action: manipulation; /* Prevent double-tap zoom on mobile */
+        }
+
+        /* Basic tile styling */
+        .tile {
+            border: 2px solid #d1d5db; /* gray-300 */
+            width: 50px; /* Fixed width for consistency */
+            height: 50px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin: 2px;
+            transition: transform 0.6s, background-color 0.3s, border-color 0.3s;
+            transform-style: preserve-3d;
+        }
+
+        /* Tile states */
+        .tile.correct {
+            background-color: #22c55e; /* green-500 */
+            border-color: #22c55e;
+            color: white;
+            transform: rotateX(360deg);
+        }
+        .tile.present {
+            background-color: #eab308; /* yellow-500 */
+            border-color: #eab308;
+            color: white;
+            transform: rotateX(360deg);
+        }
+        .tile.absent {
+            background-color: #6b7280; /* gray-500 */
+            border-color: #6b7280;
+            color: white;
+            transform: rotateX(360deg);
+        }
+        .tile.filled {
+             border-color: #9ca3af; /* gray-400 */
+        }
+
+        /* Keyboard key styling */
+        .key {
+            transition: background-color 0.2s ease-in-out;
+        }
+        .key.correct {
+            background-color: #22c55e !important; /* green-500 */
+            color: white !important;
+        }
+        .key.present {
+            background-color: #eab308 !important; /* yellow-500 */
+            color: white !important;
+        }
+        .key.absent {
+            background-color: #6b7280 !important; /* gray-500 */
+            color: white !important;
+        }
+
+        /* Message Box Styling */
+        #message-box {
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        /* Ensure grid scales reasonably on smaller screens */
+        @media (max-width: 640px) {
+            .tile {
+                width: 40px;
+                height: 40px;
+                font-size: 1.5rem;
+                margin: 1px;
+            }
+            .key {
+                padding: 8px 4px; /* Smaller padding */
+                min-width: 28px; /* Adjust min width */
+                height: 40px;
+                font-size: 0.8rem; /* Smaller font */
+                margin: 1px;
+            }
+            .keyboard-row {
+                gap: 2px; /* Reduce gap */
+            }
+        }
+         @media (max-width: 380px) {
+            .tile {
+                width: 35px;
+                height: 35px;
+                font-size: 1.25rem;
+            }
+             .key {
+                padding: 6px 3px; /* Smaller padding */
+                min-width: 24px; /* Adjust min width */
+                height: 35px;
+                font-size: 0.7rem; /* Smaller font */
+            }
+        }
+
+
+    </style>
+</head>
+<!-- Navigation-->
+<nav class="navbar navbar-expand-lg navbar-light" id="mainNav">
+    <div class="container px-4 px-lg-5">
+        <a class="navbar-brand" href="index.html">Learn More About Haven Thacker</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+            Menu
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarResponsive">
+            <ul class="navbar-nav ms-auto py-4 py-lg-0">
+                <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="about.html">Resume</a></li>
+                <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="post.html">Florals</a></li>
+                <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="contact.html">Game</a></li>
+            </ul>
+        </div>
+    </div>
+<body class="flex flex-col items-center justify-between min-h-screen p-2"> <header class="border-b-2 border-gray-300 pb-2 mb-4 w-full max-w-md text-center">
+        <h1 class="text-4xl font-bold text-pink-800">Flowerdle</h1>
+        <p id="length-info" class="text-gray-700 mt-1">Guess the flower name!</p>
+    </header>
+
+</nav>
+    <div id="message-box" class="fixed top-16 left-1/2 transform -translate-x-1/2 p-3 bg-gray-800 text-white rounded-md shadow-lg opacity-0 z-50 pointer-events-none text-center max-w-xs">
+        <span id="message-text"></span>
+    </div>
+
+    <main id="game-grid" class="flex flex-col items-center justify-center gap-1 mb-4">
+        </main>
+
+    <footer id="keyboard" class="flex flex-col items-center w-full max-w-lg px-1">
+        </footer>
+
+    <script>
+        // --- Configuration ---
+        const MAX_GUESSES = 6;
+        // Expanded Flower List (all uppercase) - Add more as needed!
+        const FLOWER_LIST = [
+            "ROSE", "LILY", "TULIP", "DAISY", "POPPY", "IRIS", "ASTER", "AZALEA",
+            "ORCHID", "VIOLET", "PETUNIA", "ZINNIA", "MARIGOLD", "PANSY", "PEONY",
+            "SUNFLOWER", "DAFFODIL", "HYACINTH", "LAVENDER", "SNAPDRAGON",
+            "CARNATION", "BEGONIA", "CAMELLIA", "GLADIOLUS", "HIBISCUS",
+            "CHRYSANTHEMUM", "MAGNOLIA", "GARDENIA", "BLUEBELL", "BUTTERCUP",
+            "CROCUS", "FOXGLOVE", "HEATHER", "HOLLYHOCK", "JASMINE", "LARKSPUR",
+            "LILAC", "LOTUS", "MORNING GLORY", "NARCISSUS", "PRIMROSE", "SWEET PEA",
+            "VERBENA", "WISTERIA"
+            // Consider adding more diverse lengths
+        ];
+
+        // --- State Variables ---
+        let targetWord = "";
+        let wordLength = 0;
+        let currentRow = 0;
+        let currentGuess = "";
+        let isGameOver = false;
+        let keyStates = {}; // Tracks the state ('correct', 'present', 'absent') for each letter on the keyboard
+
+        // --- DOM Elements ---
+        const gameGrid = document.getElementById('game-grid');
+        const keyboardContainer = document.getElementById('keyboard');
+        const lengthInfo = document.getElementById('length-info');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', initializeGame);
+        document.addEventListener('keydown', handleKeyPress); // Listen for physical keyboard
+
+        // --- Functions ---
+
+        /**
+         * Selects the flower word for the day based on the date.
+         */
+        function getDailyWord() {
+            const now = new Date();
+            // Simple way to get a day number (adjust for timezone if needed)
+            const startOfYear = new Date(now.getFullYear(), 0, 0);
+            const diff = now - startOfYear;
+            const oneDay = 1000 * 60 * 60 * 24;
+            const dayOfYear = Math.floor(diff / oneDay);
+
+            // Use dayOfYear to pick a word consistently
+            const index = dayOfYear % FLOWER_LIST.length;
+            return FLOWER_LIST[index].toUpperCase(); // Ensure uppercase
+        }
+
+        /**
+         * Sets up the game board and keyboard.
+         */
+        function initializeGame() {
+            targetWord = getDailyWord();
+            wordLength = targetWord.length;
+            currentRow = 0;
+            currentGuess = "";
+            isGameOver = false;
+            keyStates = {}; // Reset key states
+
+            lengthInfo.textContent = `Today's flower has ${wordLength} letters.`;
+
+            // Clear previous grid and keyboard
+            gameGrid.innerHTML = '';
+            keyboardContainer.innerHTML = '';
+
+            createGrid();
+            createKeyboard();
+            loadGameState(); // Load saved state if any
+        }
+
+        /**
+         * Creates the visual grid for guesses.
+         */
+        function createGrid() {
+            for (let i = 0; i < MAX_GUESSES; i++) {
+                const row = document.createElement('div');
+                row.classList.add('flex', 'justify-center', 'items-center');
+                row.id = `row-${i}`;
+                for (let j = 0; j < wordLength; j++) {
+                    const tile = document.createElement('div');
+                    tile.classList.add('tile');
+                    tile.id = `tile-${i}-${j}`;
+                    row.appendChild(tile);
+                }
+                gameGrid.appendChild(row);
+            }
+        }
+
+        /**
+         * Creates the on-screen keyboard.
+         */
+        function createKeyboard() {
+            const keysLayout = [
+                "QWERTYUIOP",
+                "ASDFGHJKL",
+                "ZXCVBNM"
+            ];
+
+            keysLayout.forEach((rowKeys, rowIndex) => {
+                const row = document.createElement('div');
+                row.classList.add('flex', 'justify-center', 'items-center', 'gap-1', 'mb-1', 'keyboard-row', 'w-full');
+
+                // Add Enter key to the last row (left side)
+                if (rowIndex === keysLayout.length - 1) {
+                    const enterKey = createKeyButton('ENTER', handleEnterKey);
+                    enterKey.classList.add('flex-grow', 'sm:flex-grow-0', 'px-3', 'text-xs', 'sm:text-sm'); // Grow more on small screens
+                    row.appendChild(enterKey);
+                }
+
+                rowKeys.split('').forEach(key => {
+                    row.appendChild(createKeyButton(key, handleLetterKey));
+                });
+
+                 // Add Backspace key to the last row (right side)
+                if (rowIndex === keysLayout.length - 1) {
+                    const backspaceKey = createKeyButton('⌫', handleBackspaceKey); // Using Backspace symbol
+                     backspaceKey.classList.add('flex-grow', 'sm:flex-grow-0', 'px-3', 'text-xs', 'sm:text-sm');
+                    row.appendChild(backspaceKey);
+                }
+
+                keyboardContainer.appendChild(row);
+            });
+             updateKeyboardVisuals(); // Apply initial loaded states
+        }
+
+        /**
+         * Helper to create a single keyboard button.
+         * @param {string} keyText - Text displayed on the key (e.g., 'A', 'ENTER').
+         * @param {function} onClickHandler - Function to call when the key is clicked.
+         */
+        function createKeyButton(keyText, onClickHandler) {
+            const button = document.createElement('button');
+            button.textContent = keyText;
+            button.classList.add(
+                'key', 'h-12', 'sm:h-14', 'rounded-md', 'bg-gray-200', 'hover:bg-gray-300',
+                'font-semibold', 'uppercase', 'cursor-pointer', 'flex', 'items-center',
+                'justify-center', 'p-2', 'text-sm', 'sm:text-base', 'min-w-[30px]', 'sm:min-w-[40px]'
+            );
+            button.dataset.key = keyText; // Store key value in data attribute
+            button.addEventListener('click', () => onClickHandler(keyText));
+            return button;
+        }
+
+        /**
+         * Handles input from the physical or virtual keyboard.
+         * @param {Event|string} eventOrKey - Either a KeyboardEvent or the key string from virtual keyboard.
+         */
+        function handleKeyPress(eventOrKey) {
+            if (isGameOver) return;
+
+            let key;
+            if (typeof eventOrKey === 'string') {
+                key = eventOrKey; // From virtual keyboard
+            } else {
+                key = eventOrKey.key; // From physical keyboard
+            }
+
+            if (key === 'Enter') {
+                handleEnterKey();
+            } else if (key === 'Backspace' || key === '⌫') {
+                 handleBackspaceKey();
+            } else if (key.length === 1 && key.match(/[a-z]/i)) {
+                 handleLetterKey(key.toUpperCase());
+            }
+        }
+
+        /** Handles letter input */
+        function handleLetterKey(letter) {
+             if (isGameOver) return;
+             if (currentGuess.length < wordLength) {
+                currentGuess += letter;
+                updateCurrentRow();
+            }
+        }
+
+        /** Handles Backspace input */
+        function handleBackspaceKey() {
+             if (isGameOver) return;
+             if (currentGuess.length > 0) {
+                currentGuess = currentGuess.slice(0, -1);
+                updateCurrentRow();
+            }
+        }
+
+        /** Handles Enter key input (submits guess) */
+        function handleEnterKey() {
+             if (isGameOver) return;
+
+            if (currentGuess.length !== wordLength) {
+                showMessage(`Not enough letters (need ${wordLength})`);
+                shakeRow(currentRow);
+                return;
+            }
+
+            // Optional: Add check if `currentGuess` is in a known flower list
+            // This requires having a comprehensive list.
+            // const isValidFlower = FLOWER_LIST.includes(currentGuess); // Simple check
+            // if (!isValidFlower) {
+            //     showMessage("Not in flower list"); // Use a more comprehensive list for this check
+            //     shakeRow(currentRow);
+            //     return;
+            // }
+
+            processGuess();
+        }
+
+
+        /**
+         * Updates the visual display of the current guess row.
+         */
+        function updateCurrentRow() {
+            const rowElement = document.getElementById(`row-${currentRow}`);
+            const tiles = rowElement.childNodes;
+            for (let i = 0; i < wordLength; i++) {
+                const tile = tiles[i];
+                if (i < currentGuess.length) {
+                    tile.textContent = currentGuess[i];
+                    tile.classList.add('filled'); // Add border style for filled tile
+                     // Add slight scale animation on input
+                    tile.style.transform = 'scale(1.1)';
+                    setTimeout(() => { tile.style.transform = 'scale(1)'; }, 100);
+                } else {
+                    tile.textContent = '';
+                     tile.classList.remove('filled');
+                }
+            }
+        }
+
+        /**
+         * Processes the submitted guess, provides feedback, and checks game state.
+         */
+        function processGuess() {
+            const guess = currentGuess;
+            const rowElement = document.getElementById(`row-${currentRow}`);
+            const tiles = rowElement.childNodes;
+            const tempTargetWord = targetWord.split(''); // Mutable copy for checking presence
+            const guessLetters = guess.split('');
+            const evaluation = Array(wordLength).fill(null); // To store 'correct', 'present', 'absent'
+
+            // --- First Pass: Check for Correct Letters (Green) ---
+            guessLetters.forEach((letter, index) => {
+                if (letter === targetWord[index]) {
+                    evaluation[index] = 'correct';
+                    keyStates[letter] = 'correct'; // Update keyboard state
+                    tempTargetWord[index] = null; // Mark as used in target
+                }
+            });
+
+             // --- Second Pass: Check for Present Letters (Yellow) ---
+            guessLetters.forEach((letter, index) => {
+                // Only check if not already marked correct
+                if (evaluation[index] === null) {
+                    const presentIndex = tempTargetWord.indexOf(letter);
+                    if (presentIndex !== -1) {
+                        evaluation[index] = 'present';
+                        // Update keyboard state only if not already correct
+                        if (keyStates[letter] !== 'correct') {
+                             keyStates[letter] = 'present';
+                        }
+                        tempTargetWord[presentIndex] = null; // Mark as used
+                    }
+                }
+            });
+
+            // --- Third Pass: Mark Absent Letters (Gray) ---
+             guessLetters.forEach((letter, index) => {
+                if (evaluation[index] === null) {
+                    evaluation[index] = 'absent';
+                     // Update keyboard state only if not already correct or present
+                     if (!keyStates[letter]) {
+                         keyStates[letter] = 'absent';
+                     }
+                }
+            });
+
+
+            // --- Apply Visual Feedback with Delay ---
+            tiles.forEach((tile, index) => {
+                 setTimeout(() => {
+                    tile.classList.add(evaluation[index]);
+                    tile.style.transitionDelay = `${index * 100}ms`; // Stagger animation
+                 }, index * 100); // Stagger start time
+            });
+
+            updateKeyboardVisuals(); // Update keyboard colors
+            saveGameState(); // Save progress after guess
+
+            // --- Check Win/Loss Condition ---
+            setTimeout(() => { // Wait for animations to mostly finish
+                if (guess === targetWord) {
+                    showMessage("You guessed it!", 3000);
+                    isGameOver = true;
+                    // Optional: Add celebratory animation/confetti
+                } else if (currentRow === MAX_GUESSES - 1) {
+                    showMessage(`Out of guesses! The flower was: ${targetWord}`, 5000);
+                    isGameOver = true;
+                } else {
+                    // Move to the next row
+                    currentRow++;
+                    currentGuess = "";
+                }
+                 saveGameState(); // Save final game over state
+            }, wordLength * 100 + 300); // Adjust timing based on animation
+        }
+
+        /**
+         * Updates the visual appearance of the keyboard keys based on keyStates.
+         */
+        function updateKeyboardVisuals() {
+            const keys = keyboardContainer.querySelectorAll('.key');
+            keys.forEach(key => {
+                const letter = key.dataset.key;
+                if (keyStates[letter]) {
+                    // Remove previous states before adding the new one
+                    key.classList.remove('correct', 'present', 'absent');
+                    key.classList.add(keyStates[letter]);
+                }
+            });
+        }
+
+        /**
+         * Displays a message to the user for a short duration.
+         * @param {string} msg - The message text.
+         * @param {number} [duration=1500] - How long to display the message in ms.
+         */
+        function showMessage(msg, duration = 1500) {
+            messageText.textContent = msg;
+            messageBox.style.opacity = '1';
+            setTimeout(() => {
+                messageBox.style.opacity = '0';
+            }, duration);
+        }
+
+        /**
+         * Adds a shake animation to a row for invalid guesses.
+         * @param {number} rowIndex - The index of the row to shake.
+         */
+        function shakeRow(rowIndex) {
+            const rowElement = document.getElementById(`row-${rowIndex}`);
+            if (rowElement) {
+                rowElement.classList.add('animate-shake'); // Needs a CSS animation defined
+                 // Add Tailwind animation temporarily if not defined in CSS
+                 rowElement.style.animation = 'shake 0.5s ease-in-out';
+                 setTimeout(() => {
+                    rowElement.classList.remove('animate-shake');
+                    rowElement.style.animation = ''; // Clean up inline style
+                 }, 500);
+            }
+        }
+
+        // Define shake animation if not using a CSS framework with it
+        const styleSheet = document.createElement("style");
+        styleSheet.type = "text/css";
+        styleSheet.innerText = `
+            @keyframes shake {
+                10%, 90% { transform: translateX(-1px); }
+                20%, 80% { transform: translateX(2px); }
+                30%, 50%, 70% { transform: translateX(-4px); }
+                40%, 60% { transform: translateX(4px); }
+            }
+            .animate-shake {
+                animation: shake 0.5s ease-in-out;
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+
+         // --- Persistence (Local Storage) ---
+
+        /**
+         * Saves the current game state to local storage.
+         */
+        function saveGameState() {
+            const gameState = {
+                targetWord: targetWord,
+                guesses: [],
+                currentRow: currentRow,
+                isGameOver: isGameOver,
+                keyStates: keyStates,
+                timestamp: new Date().toDateString() // Store date to invalidate old saves
+            };
+
+            // Get guesses made so far
+            for (let i = 0; i < currentRow; i++) {
+                 const rowElement = document.getElementById(`row-${i}`);
+                 let guess = "";
+                 rowElement.childNodes.forEach(tile => guess += tile.textContent);
+                 gameState.guesses.push(guess);
+            }
+             // Include current guess if game isn't over and it's partially typed
+            if (!isGameOver && currentGuess.length > 0 && currentRow < MAX_GUESSES) {
+                 // We don't save the partially typed guess itself,
+                 // but saving currentRow implies where to resume typing.
+            }
+
+
+            localStorage.setItem('flowerdleGameState', JSON.stringify(gameState));
+        }
+
+        /**
+         * Loads the game state from local storage if available for the current day.
+         */
+        function loadGameState() {
+            const savedState = localStorage.getItem('flowerdleGameState');
+            if (savedState) {
+                try {
+                    const gameState = JSON.parse(savedState);
+                    const today = new Date().toDateString();
+
+                    // Check if the save is from today and for the same word
+                    if (gameState.timestamp === today && gameState.targetWord === targetWord) {
+                        keyStates = gameState.keyStates || {}; // Load key states
+                        isGameOver = gameState.isGameOver;
+
+                        // Replay previous guesses visually
+                        gameState.guesses.forEach((guess, index) => {
+                             currentGuess = guess;
+                             currentRow = index;
+                             processGuess(); // Re-run evaluation to set colors
+                        });
+
+                         // After replaying, set the currentRow correctly for the next guess
+                         // processGuess increments currentRow, so set it back if game not over
+                         if (!isGameOver) {
+                             currentRow = gameState.guesses.length;
+                             currentGuess = ""; // Clear guess input area
+                         } else {
+                             // If game was over, ensure state reflects it
+                             currentRow = gameState.currentRow; // Keep the final row
+                             currentGuess = ""; // Clear guess
+                         }
+
+
+                        updateKeyboardVisuals(); // Apply loaded key states
+
+                        // Show final message if game was already over
+                        if (isGameOver) {
+                             if (gameState.guesses.includes(targetWord)) {
+                                 showMessage("Welcome back! You guessed it!", 3000);
+                             } else {
+                                 showMessage(`Welcome back! The flower was: ${targetWord}`, 5000);
+                             }
+                        }
+
+                    } else {
+                        // Clear old state if date or word doesn't match
+                        localStorage.removeItem('flowerdleGameState');
+                    }
+                } catch (e) {
+                    console.error("Error loading game state:", e);
+                    localStorage.removeItem('flowerdleGameState'); // Clear corrupted state
+                }
+            }
+        }
+
+
+    </script>
+
+</body>
+</html>
